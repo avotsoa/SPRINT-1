@@ -1,0 +1,41 @@
+===============================================
+  URLS DISPONIBLES DANS L'APPLICATION
+===============================================
+
+BASE URL: http://localhost:8080/FrameworkResume
+
+
+CONTROLEUR: TestController
+---------------------------
+/home                    - Page d'accueil
+
+
+CONTROLEUR: UtilisateurController
+----------------------------------
+/utilisateurs            - Liste des utilisateurs
+
+
+CONTROLEUR: ProduitController
+------------------------------
+/produits                - Liste des produits (tableau)
+
+
+CLASSE SIMPLE (sans @Controller)
+---------------------------------
+/api/test                - Endpoint API test
+
+
+PAGE STATIQUE
+-------------
+/                        - index.html (page d'accueil HTML)
+
+
+TOTAL: 4 URLs mappees
+===============================================
+
+NOTES:
+- Toutes les pages sont sans CSS (strict necessaire)
+- 3 controleurs avec @Controller
+- 1 classe simple sans @Controller
+- Deploiement automatique dans Tomcat
+- URLs simplifiees selon la demande

@@ -1,0 +1,108 @@
+===============================================
+  FRAMEWORK MVC RESUME - DEPLOYMENT AUTOMATIQUE
+===============================================
+
+QUICK START
+-----------
+
+1. Configurer votre Tomcat (une seule fois):
+   - Editez config.ps1
+   - Changez $TOMCAT_HOME avec le chemin de votre Tomcat
+   
+   Exemple:
+   $TOMCAT_HOME = "C:\apache-tomcat-10.1.28"
+
+2. Compiler et deployer automatiquement:
+   .\build.ps1
+
+3. Demarrer Tomcat (si pas deja demarre):
+   Allez dans Tomcat/bin et executez startup.bat
+
+4. Tester:
+   http://localhost:8080/FrameworkResume
+
+
+AVANTAGES
+---------
+
+✓ UN SEUL SCRIPT : build.ps1 fait tout
+✓ DEPLOIEMENT AUTOMATIQUE : Le WAR est copie dans Tomcat/webapps
+✓ SUPPRESSION AUTOMATIQUE : L'ancien WAR est supprime avant le nouveau
+✓ DETECTION INTELLIGENTE : Trouve Tomcat automatiquement
+✓ CONFIGURATION SIMPLE : Editez config.ps1 si necessaire
+
+
+WORKFLOW DE DEVELOPPEMENT
+--------------------------
+
+1. Modifiez votre code Java
+2. Executez: .\build.ps1
+3. Le WAR est automatiquement deploye
+4. Rafraichissez votre navigateur
+
+Plus besoin de copier manuellement le WAR!
+
+
+URLS DISPONIBLES
+----------------
+
+http://localhost:8080/FrameworkResume/          - Page d'accueil
+http://localhost:8080/FrameworkResume/home      - Controleur Test
+http://localhost:8080/FrameworkResume/about     - A propos
+http://localhost:8080/FrameworkResume/contact   - Contact
+http://localhost:8080/FrameworkResume/api/test  - API Test
+
+
+STRUCTURE DU PROJET
+-------------------
+
+resumer/
+├── framework/          Framework MVC avec annotations
+├── test/               Application de test
+├── build.ps1          Script de compilation ET deploiement
+├── config.ps1         Configuration Tomcat (EDITEZ ICI!)
+└── GUIDE.md           Documentation complete
+
+
+AIDE
+----
+
+Si Tomcat n'est pas detecte:
+1. Verifiez que Tomcat est bien installe
+2. Editez config.ps1 avec le bon chemin
+3. Ou definissez la variable CATALINA_HOME
+
+Pour plus d'informations, consultez GUIDE.md
+
+
+EXEMPLE DE SESSION
+------------------
+
+C:\...\resumer> notepad config.ps1
+[Editez le chemin Tomcat]
+
+C:\...\resumer> .\build.ps1
+[1/5] Compilation du framework...
+   [OK] Framework compile
+[2/5] Creation du JAR...
+   [OK] JAR cree
+[3/5] Compilation des tests...
+   [OK] Tests compiles
+[4/5] Assemblage du WAR...
+   [OK] Fichiers assembles
+[5/5] Generation du WAR...
+   [OK] WAR genere
+
+Tomcat detecte: C:\apache-tomcat-10.1.28
+Ancien WAR supprime
+[OK] WAR deploye dans Tomcat!
+
+Pour tester:
+  1. Demarrez Tomcat
+  2. Accedez a: http://localhost:8080/FrameworkResume
+
+BUILD REUSSI!
+
+
+BON DEVELOPPEMENT!
+==================
