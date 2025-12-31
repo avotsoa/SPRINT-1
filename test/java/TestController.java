@@ -2,6 +2,7 @@ package test.java;
 
 import com.annotations.Controller;
 import com.annotations.HandleUrl;
+import com.framework.ModelView;
 
 /**
  * Contrôleur de test avec l'annotation @Controller.
@@ -26,6 +27,15 @@ public class TestController {
             </body>
             </html>
             """;
+    }
+
+    /**
+     * Sprint4-bis: retourne un ModelView pour forward vers test.jsp
+     * URL: /mv
+     */
+    @HandleUrl("/mv")
+    public ModelView mv() {
+        return new ModelView("/test.jsp");
     }
 
 }

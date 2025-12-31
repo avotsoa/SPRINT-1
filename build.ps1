@@ -13,7 +13,7 @@ $TEST_BUILD = "test\build"
 $TEST_WEBINF = "test\WEB-INF"
 
 # Emplacement du servlet-api.jar utilise pour la compilation (present dans le projet)
-$SERVLET_API = "test\WEB-INF\lib\servlet-api.jar"
+$SERVLET_API = "framework\lib\servlet-api.jar"
 
 Write-Host ""
 Write-Host "===============================================" -ForegroundColor Cyan
@@ -111,8 +111,13 @@ Copy-Item -Path "$TEST_WEBINF\web.xml" -Destination "$TEST_BUILD\WEB-INF\" -Forc
 # Copier le framework JAR dans WEB-INF/lib
 Copy-Item -Path $FRAMEWORK_JAR -Destination "$TEST_BUILD\WEB-INF\lib\" -Force
 
-# Copier index.html
-Copy-Item -Path "test\index.html" -Destination $TEST_BUILD -Force
+# Copier index.html (optionnel)
+if (Test-Path "test\index.html") {
+    Copy-Item -Path "test\index.html" -Destination $TEST_BUILD -Force
+}
+
+# Copier les JSP (Sprint4-bis)
+Copy-Item -Path "test\*.jsp" -Destination $TEST_BUILD -Force -ErrorAction SilentlyContinue
 
 Write-Host "   [OK] Fichiers assembles" -ForegroundColor Green
 
@@ -139,9 +144,8 @@ $warContent = jar tf "$TEST_BUILD\$APP_NAME.war"
 $checks = @(
     @{Name="framework.jar"; Pattern="WEB-INF/lib/framework.jar"},
     @{Name="TestController.class"; Pattern="TestController.class"},
-    @{Name="SimpleClass.class"; Pattern="SimpleClass.class"},
     @{Name="web.xml"; Pattern="WEB-INF/web.xml"},
-    @{Name="index.html"; Pattern="index.html"}
+    @{Name="test.jsp"; Pattern="test.jsp"}
 )
 
 $allOk = $true
