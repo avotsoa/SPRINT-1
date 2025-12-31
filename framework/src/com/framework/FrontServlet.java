@@ -9,6 +9,8 @@ import java.util.regex.Matcher;
 import java.lang.reflect.*;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
+import jakarta.servlet.annotation.MultipartConfig;
+import jakarta.servlet.http.Part;
 import com.annotations.HandleUrl;
 import com.annotations.GetMapping;
 import com.annotations.PostMapping;
@@ -328,11 +330,21 @@ public class FrontServlet extends HttpServlet {
             allRequestParams.put(paramName, req.getParameter(paramName));
         }
         
+        // Sprint 10: Extraire les fichiers uploadés
+        Map<String, Byte[]> uploadedFiles = extractUploadedFiles(req);
+        
         // Pour chaque paramètre de la méthode
         for (int i = 0; i < parameters.length; i++) {
             Parameter param = parameters[i];
             String paramName = param.getName();
             Class<?> paramType = param.getType();
+            
+            // Sprint 10: Vérifier si le paramètre est de type Map<String,Byte[]>
+            if (isMapStringByteArray(paramType, param)) {
+                // Créer une nouvelle Map avec tous les fichiers uploadés
+                args[i] = new HashMap<>(uploadedFiles);
+                continue;
+            }
             
             // Sprint 8: Vérifier si le paramètre est de type Map<String,String>
             if (isMapStringString(paramType, param)) {
@@ -391,6 +403,87 @@ public class FrontServlet extends HttpServlet {
             }
         } catch (Exception e) {
             // En cas d'erreur, on considère que ce n'est pas Map<String,String>
+        }
+        
+        return false;
+    }
+
+    /**
+     * Sprint 10: Extrait les fichiers uploadés de la requête
+     * Retourne une Map<nom, Byte[]> avec tous les fichiers
+     */
+    private Map<String, Byte[]> extractUploadedFiles(HttpServletRequest req) {
+        Map<String, Byte[]> files = new HashMap<>();
+        
+        try {
+            // Vérifier si la requête est multipart (pour l'upload de fichiers)
+            String contentType = req.getContentType();
+            if (contentType != null && contentType.toLowerCase().startsWith("multipart/form-data")) {
+                // Obtenir tous les parts (fichiers et paramètres)
+                Collection<Part> parts = req.getParts();
+                
+                for (Part part : parts) {
+                    // Vérifier si c'est un fichier (a un nom de fichier)
+                    String fileName = getFileName(part);
+                    if (fileName != null && !fileName.isEmpty()) {
+                        // Lire le contenu du fichier
+                        try (java.io.InputStream inputStream = part.getInputStream()) {
+                            byte[] fileBytes = inputStream.readAllBytes();
+                            // Utiliser le nom du champ (part.getName()) comme clé
+                            files.put(part.getName(), fileBytes);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // En cas d'erreur, retourner une Map vide
+        }
+        
+        return files;
+    }
+    
+    /**
+     * Sprint 10: Extrait le nom du fichier d'un Part
+     */
+    private String getFileName(Part part) {
+        String contentDisposition = part.getHeader("content-disposition");
+        if (contentDisposition != null) {
+            String[] tokens = contentDisposition.split(";");
+            for (String token : tokens) {
+                if (token.trim().startsWith("filename")) {
+                    String fileName = token.substring(token.indexOf("=") + 2, token.length() - 1);
+                    return fileName;
+                }
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Sprint 10: Vérifie si un paramètre est de type Map<String,Byte[]>
+     */
+    private boolean isMapStringByteArray(Class<?> paramType, Parameter param) {
+        // Vérifier si c'est une Map
+        if (!Map.class.isAssignableFrom(paramType)) {
+            return false;
+        }
+        
+        // Vérifier les types génériques via Type
+        try {
+            Type genericType = param.getParameterizedType();
+            if (genericType instanceof java.lang.reflect.ParameterizedType) {
+                java.lang.reflect.ParameterizedType pType = (java.lang.reflect.ParameterizedType) genericType;
+                Type[] actualTypes = pType.getActualTypeArguments();
+                
+                // Vérifier qu'il y a exactement 2 types génériques (K, V)
+                if (actualTypes.length == 2) {
+                    // Vérifier que K est String et V est Byte[]
+                    return actualTypes[0] == String.class && 
+                           actualTypes[1] == Byte[].class;
+                }
+            }
+        } catch (Exception e) {
+            // En cas d'erreur, on considère que ce n'est pas Map<String,Byte[]>
         }
         
         return false;
