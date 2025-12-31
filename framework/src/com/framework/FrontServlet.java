@@ -12,6 +12,9 @@ import com.annotations.HandleUrl;
 =======
 import com.annotations.Controller;
 import com.framework.ModelView;
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 public class FrontServlet extends HttpServlet {
@@ -120,6 +123,7 @@ public class FrontServlet extends HttpServlet {
             // Invoquer la méthode
             Object result = method.invoke(controller);
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             
             // Gérer le résultat
             res.setContentType("text/html;charset=UTF-8");
@@ -128,6 +132,8 @@ public class FrontServlet extends HttpServlet {
                     out.println(result.toString());
                 } else {
 =======
+=======
+>>>>>>> Stashed changes
 
             res.setCharacterEncoding("UTF-8");
             if (result instanceof String) {
@@ -148,6 +154,9 @@ public class FrontServlet extends HttpServlet {
                 // Aucun retour ou type non géré: message par défaut
                 res.setContentType("text/html;charset=UTF-8");
                 try (PrintWriter out = res.getWriter()) {
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     out.println("<html><body><h1>Méthode exécutée avec succès</h1></body></html>");
                 }
