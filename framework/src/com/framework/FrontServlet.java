@@ -4,6 +4,8 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 import java.lang.reflect.*;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
@@ -16,6 +18,7 @@ public class FrontServlet extends HttpServlet {
         "/index.html", "/index.htm", "/index.jsp"
     );
     private HashMap<String, Mapping> urlMappings = new HashMap<>();
+    private List<UrlPattern> urlPatterns = new ArrayList<>();
 
     @Override
     public void init() throws ServletException {
@@ -71,7 +74,15 @@ public class FrontServlet extends HttpServlet {
             if (method.isAnnotationPresent(HandleUrl.class)) {
                 HandleUrl annotation = method.getAnnotation(HandleUrl.class);
                 String url = annotation.value();
-                urlMappings.put(url, new Mapping(instance, method));
+                
+                // Vérifier si l'URL contient des paramètres dynamiques {param}
+                if (url.contains("{") && url.contains("}")) {
+                    // URL avec paramètres dynamiques
+                    urlPatterns.add(new UrlPattern(url, new Mapping(instance, method)));
+                } else {
+                    // URL statique simple
+                    urlMappings.put(url, new Mapping(instance, method));
+                }
             }
         }
     }
@@ -82,9 +93,16 @@ public class FrontServlet extends HttpServlet {
 
         String path = req.getRequestURI().substring(req.getContextPath().length());
 
-        // Vérifier si l'URL correspond à un mapping d'annotation
+        // Vérifier si l'URL correspond à un mapping statique
         if (urlMappings.containsKey(path)) {
             handleAnnotatedMethod(urlMappings.get(path), req, res);
+            return;
+        }
+
+        // Vérifier si l'URL correspond à un pattern avec paramètres dynamiques
+        UrlPattern matchedPattern = findMatchingPattern(path);
+        if (matchedPattern != null) {
+            handleAnnotatedMethodWithParams(matchedPattern, path, req, res);
             return;
         }
 
@@ -109,12 +127,20 @@ public class FrontServlet extends HttpServlet {
 
     private void handleAnnotatedMethod(Mapping mapping, HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
+        handleAnnotatedMethod(mapping, req, res, new HashMap<>());
+    }
+
+    private void handleAnnotatedMethod(Mapping mapping, HttpServletRequest req, HttpServletResponse res, Map<String, String> urlParams)
+            throws ServletException, IOException {
         try {
             Method method = mapping.getMethod();
             Object controller = mapping.getController();
             
-            // Invoquer la méthode
-            Object result = method.invoke(controller);
+            // Préparer les arguments pour la méthode
+            Object[] args = prepareMethodArguments(method, urlParams, req);
+            
+            // Invoquer la méthode avec les arguments
+            Object result = method.invoke(controller, args);
 
             res.setCharacterEncoding("UTF-8");
             if (result instanceof String) {
@@ -143,6 +169,164 @@ public class FrontServlet extends HttpServlet {
         } catch (Exception e) {
             throw new ServletException("Erreur lors de l'invocation de la méthode", e);
         }
+    }
+
+    private void handleAnnotatedMethodWithParams(UrlPattern pattern, String requestPath, HttpServletRequest req, HttpServletResponse res)
+            throws ServletException, IOException {
+        Map<String, String> urlParams = extractUrlParameters(pattern.getPattern(), requestPath);
+        handleAnnotatedMethod(pattern.getMapping(), req, res, urlParams);
+    }
+
+    /**
+     * Trouve un pattern d'URL qui correspond au chemin demandé
+     */
+    private UrlPattern findMatchingPattern(String requestPath) {
+        for (UrlPattern pattern : urlPatterns) {
+            if (matchesPattern(pattern.getPattern(), requestPath)) {
+                return pattern;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Vérifie si le chemin correspond au pattern (avec gestion des {param})
+     */
+    private boolean matchesPattern(String pattern, String path) {
+        // Convertir le pattern en regex
+        // Ex: /etudiant/{id} -> /etudiant/([^/]+)
+        String regex = pattern.replaceAll("\\{[^}]+\\}", "([^/]+)");
+        return Pattern.matches(regex, path);
+    }
+
+    /**
+     * Extrait les paramètres de l'URL selon le pattern
+     * Ex: pattern="/etudiant/{id}", path="/etudiant/123" -> {"id": "123"}
+     */
+    private Map<String, String> extractUrlParameters(String pattern, String path) {
+        Map<String, String> params = new HashMap<>();
+        
+        // Extraire les noms de paramètres du pattern
+        List<String> paramNames = new ArrayList<>();
+        Pattern paramPattern = Pattern.compile("\\{([^}]+)\\}");
+        Matcher matcher = paramPattern.matcher(pattern);
+        while (matcher.find()) {
+            paramNames.add(matcher.group(1));
+        }
+        
+        // Convertir le pattern en regex et extraire les valeurs
+        String regex = pattern.replaceAll("\\{[^}]+\\}", "([^/]+)");
+        Pattern pathPattern = Pattern.compile(regex);
+        Matcher pathMatcher = pathPattern.matcher(path);
+        
+        if (pathMatcher.matches()) {
+            for (int i = 0; i < paramNames.size() && i < pathMatcher.groupCount(); i++) {
+                String paramName = paramNames.get(i);
+                String paramValue = pathMatcher.group(i + 1); // group(0) est le match complet
+                params.put(paramName, paramValue);
+            }
+        }
+        
+        return params;
+    }
+
+    /**
+     * Prépare les arguments pour l'invocation de la méthode
+     * Gère les méthodes sans paramètres (anciennes fonctionnalités) et avec paramètres (Sprint 6)
+     */
+    private Object[] prepareMethodArguments(Method method, Map<String, String> urlParams, HttpServletRequest req) {
+        Parameter[] parameters = method.getParameters();
+        
+        // Si la méthode n'a pas de paramètres, retourner un tableau vide (anciennes fonctionnalités)
+        if (parameters.length == 0) {
+            return new Object[0];
+        }
+        
+        Object[] args = new Object[parameters.length];
+        
+        // Combiner les paramètres d'URL et de requête
+        Map<String, String> allParams = new HashMap<>(urlParams);
+        
+        // Ajouter les paramètres de requête
+        Enumeration<String> paramNames = req.getParameterNames();
+        while (paramNames.hasMoreElements()) {
+            String paramName = paramNames.nextElement();
+            allParams.put(paramName, req.getParameter(paramName));
+        }
+        
+        // Pour chaque paramètre de la méthode
+        for (int i = 0; i < parameters.length; i++) {
+            Parameter param = parameters[i];
+            String paramName = param.getName();
+            Class<?> paramType = param.getType();
+            
+            // Vérifier si le nom du paramètre est disponible (compilé avec -parameters)
+            // Si non disponible, param.getName() retourne "arg0", "arg1", etc.
+            // Dans ce cas, on ne peut pas faire de matching par nom, donc on utilise null
+            boolean isRealName = paramName != null && !paramName.startsWith("arg");
+            
+            String stringValue = null;
+            if (isRealName) {
+                // Chercher la valeur dans les paramètres (URL ou requête) par nom
+                stringValue = allParams.get(paramName);
+            }
+            // Si le nom n'est pas disponible ou la valeur n'est pas trouvée, stringValue reste null
+            
+            // Convertir en type approprié (retourne valeur par défaut si null)
+            args[i] = convertValue(stringValue, paramType);
+        }
+        
+        return args;
+    }
+
+    /**
+     * Convertit une String en type approprié
+     */
+    private Object convertValue(String stringValue, Class<?> targetType) {
+        if (stringValue == null) {
+            return getDefaultValue(targetType);
+        }
+        
+        try {
+            if (targetType == String.class) {
+                return stringValue;
+            } else if (targetType == int.class || targetType == Integer.class) {
+                return Integer.parseInt(stringValue);
+            } else if (targetType == long.class || targetType == Long.class) {
+                return Long.parseLong(stringValue);
+            } else if (targetType == double.class || targetType == Double.class) {
+                return Double.parseDouble(stringValue);
+            } else if (targetType == float.class || targetType == Float.class) {
+                return Float.parseFloat(stringValue);
+            } else if (targetType == boolean.class || targetType == Boolean.class) {
+                return Boolean.parseBoolean(stringValue);
+            } else if (targetType == byte.class || targetType == Byte.class) {
+                return Byte.parseByte(stringValue);
+            } else if (targetType == short.class || targetType == Short.class) {
+                return Short.parseShort(stringValue);
+            }
+        } catch (NumberFormatException e) {
+            // En cas d'erreur de conversion, retourner la valeur par défaut
+            return getDefaultValue(targetType);
+        }
+        
+        // Type non supporté, retourner null ou valeur par défaut
+        return getDefaultValue(targetType);
+    }
+
+    /**
+     * Retourne la valeur par défaut pour un type primitif ou null pour les objets
+     */
+    private Object getDefaultValue(Class<?> type) {
+        if (type == boolean.class) return false;
+        if (type == byte.class) return (byte) 0;
+        if (type == short.class) return (short) 0;
+        if (type == int.class) return 0;
+        if (type == long.class) return 0L;
+        if (type == float.class) return 0.0f;
+        if (type == double.class) return 0.0;
+        if (type == char.class) return '\u0000';
+        return null;
     }
 
     private String findExistingIndex() {
@@ -180,5 +364,26 @@ public class FrontServlet extends HttpServlet {
     private void defaultServe(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
         defaultDispatcher.forward(req, res);
+    }
+
+    /**
+     * Classe interne pour stocker un pattern d'URL avec son mapping
+     */
+    private static class UrlPattern {
+        private String pattern;
+        private Mapping mapping;
+
+        public UrlPattern(String pattern, Mapping mapping) {
+            this.pattern = pattern;
+            this.mapping = mapping;
+        }
+
+        public String getPattern() {
+            return pattern;
+        }
+
+        public Mapping getMapping() {
+            return mapping;
+        }
     }
 }

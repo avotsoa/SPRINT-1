@@ -45,8 +45,8 @@ Write-Host "   Fichiers Java trouves: $($frameworkFiles.Count)" -ForegroundColor
 [System.IO.File]::WriteAllLines("sources_framework.txt", $frameworkFiles, 
                                 (New-Object System.Text.UTF8Encoding $false))
 
-# Compiler
-javac -cp $SERVLET_API -d $FRAMEWORK_BUILD "@sources_framework.txt"
+# Compiler avec -parameters pour conserver les noms de paramètres (nécessaire pour Sprint 6)
+javac -parameters -cp $SERVLET_API -d $FRAMEWORK_BUILD "@sources_framework.txt"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERREUR] Erreur de compilation du framework!" -ForegroundColor Red
     Remove-Item "sources_framework.txt"
@@ -91,8 +91,8 @@ Write-Host "   Fichiers de test trouves: $($testFiles.Count)" -ForegroundColor G
 [System.IO.File]::WriteAllLines("sources_test.txt", $testFiles, 
                                 (New-Object System.Text.UTF8Encoding $false))
 
-# Compiler avec le framework JAR dans le classpath
-javac -cp "$SERVLET_API;$FRAMEWORK_JAR" -d "$TEST_BUILD\WEB-INF\classes" "@sources_test.txt"
+# Compiler avec -parameters pour conserver les noms de paramètres (nécessaire pour Sprint 6)
+javac -parameters -cp "$SERVLET_API;$FRAMEWORK_JAR" -d "$TEST_BUILD\WEB-INF\classes" "@sources_test.txt"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERREUR] Erreur de compilation des tests!" -ForegroundColor Red
     Remove-Item "sources_test.txt"
