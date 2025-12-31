@@ -8,6 +8,7 @@ import java.lang.reflect.*;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import com.annotations.HandleUrl;
+import com.framework.ModelView;
 
 public class FrontServlet extends HttpServlet {
     private RequestDispatcher defaultDispatcher;
@@ -114,13 +115,28 @@ public class FrontServlet extends HttpServlet {
             
             // Invoquer la méthode
             Object result = method.invoke(controller);
-            
-            // Gérer le résultat
-            res.setContentType("text/html;charset=UTF-8");
-            try (PrintWriter out = res.getWriter()) {
-                if (result != null) {
-                    out.println(result.toString());
-                } else {
+
+            res.setCharacterEncoding("UTF-8");
+            if (result instanceof String) {
+                res.setContentType("text/html;charset=UTF-8");
+                try (PrintWriter out = res.getWriter()) {
+                    out.print((String) result);
+                }
+            } else if (result instanceof ModelView) {
+                ModelView mv = (ModelView) result;
+                String view = mv.getView();
+                if (view == null || view.isEmpty()) {
+                    throw new ServletException("ModelView sans nom de vue");
+                }
+                if (mv.getData() != null) {
+                    for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
+                        req.setAttribute(entry.getKey(), entry.getValue());
+                    }
+                }
+                req.getRequestDispatcher(view).forward(req, res);
+            } else {
+                res.setContentType("text/html;charset=UTF-8");
+                try (PrintWriter out = res.getWriter()) {
                     out.println("<html><body><h1>Méthode exécutée avec succès</h1></body></html>");
                 }
             }
