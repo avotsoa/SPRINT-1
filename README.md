@@ -9,3 +9,13 @@ http://localhost:8080/FrameworkResume/etudiants
 http://localhost:8080/FrameworkResume/etudiant/1
 http://localhost:8080/FrameworkResume/etudiant/42
 http://localhost:8080/FrameworkResume/etudiant/123
+
+# Sprint 7: Différenciation GET/POST
+http://localhost:8080/FrameworkResume/formulaire (GET - affiche le formulaire)
+http://localhost:8080/FrameworkResume/liste (GET uniquement)
+http://localhost:8080/FrameworkResume/api/data (GET via @RequestMapping)
+# Note: Le formulaire peut être soumis via POST pour voir la différence
+
+
+url information :
+ http://localhost:8080/FrameworkResume/annotation-info

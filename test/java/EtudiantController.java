@@ -23,14 +23,14 @@ public class EtudiantController {
     public ModelView get(int id) {
         ModelView mv = new ModelView("/etudiant.jsp");
         
-        // Simuler la récupération d'un étudiant
-        String nom = "Étudiant " + id;
+        // Simuler la recuperation d'un etudiant
+        String nom = "Etudiant " + id;
         String email = "etudiant" + id + "@example.com";
         
         mv.addObject("id", id);
         mv.addString("nom", nom);
         mv.addString("email", email);
-        mv.addString("message", "Étudiant récupéré avec succès (Sprint 6)");
+        mv.addString("message", "Etudiant recupere avec succes (Sprint 6)");
         
         return mv;
     }
@@ -43,16 +43,16 @@ public class EtudiantController {
     public String liste() {
         return """
             <html>
-            <head><title>Liste des Étudiants</title></head>
+            <head><title>Liste des Etudiants</title></head>
             <body>
-                <h1>Liste des Étudiants</h1>
+                <h1>Liste des Etudiants</h1>
                 <ul>
-                    <li><a href="/FrameworkResume/etudiant/1">Étudiant 1</a></li>
-                    <li><a href="/FrameworkResume/etudiant/2">Étudiant 2</a></li>
-                    <li><a href="/FrameworkResume/etudiant/3">Étudiant 3</a></li>
-                    <li><a href="/FrameworkResume/etudiant/42">Étudiant 42</a></li>
+                    <li><a href="/FrameworkResume/etudiant/1">Etudiant 1</a></li>
+                    <li><a href="/FrameworkResume/etudiant/2">Etudiant 2</a></li>
+                    <li><a href="/FrameworkResume/etudiant/3">Etudiant 3</a></li>
+                    <li><a href="/FrameworkResume/etudiant/42">Etudiant 42</a></li>
                 </ul>
-                <p><a href="/FrameworkResume/home">Retour à l'accueil</a></p>
+                <p><a href="/FrameworkResume/home">Retour a l'accueil</a></p>
             </body>
             </html>
             """;

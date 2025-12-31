@@ -10,6 +10,10 @@ import java.lang.reflect.*;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import com.annotations.HandleUrl;
+import com.annotations.GetMapping;
+import com.annotations.PostMapping;
+import com.annotations.RequestMapping;
+import com.annotations.Controller;
 import com.framework.ModelView;
 
 public class FrontServlet extends HttpServlet {
@@ -68,20 +72,55 @@ public class FrontServlet extends HttpServlet {
 
     private void processClass(String className) throws Exception {
         Class<?> clazz = Class.forName(className);
+        
+        // Sprint 2-bis: Vérifier si la classe a l'annotation @Controller
+        if (!clazz.isAnnotationPresent(Controller.class)) {
+            // Si la classe n'a pas l'annotation @Controller, on l'ignore
+            return;
+        }
+        
         Object instance = clazz.getDeclaredConstructor().newInstance();
         
         for (Method method : clazz.getDeclaredMethods()) {
-            if (method.isAnnotationPresent(HandleUrl.class)) {
+            String url = null;
+            String httpMethod = "GET"; // Par défaut GET pour compatibilité avec @HandleUrl
+            
+            // Vérifier les nouvelles annotations (Sprint 7) en priorité
+            if (method.isAnnotationPresent(GetMapping.class)) {
+                GetMapping annotation = method.getAnnotation(GetMapping.class);
+                url = annotation.value();
+                httpMethod = "GET";
+            } else if (method.isAnnotationPresent(PostMapping.class)) {
+                PostMapping annotation = method.getAnnotation(PostMapping.class);
+                url = annotation.value();
+                httpMethod = "POST";
+            } else if (method.isAnnotationPresent(RequestMapping.class)) {
+                RequestMapping annotation = method.getAnnotation(RequestMapping.class);
+                url = annotation.value();
+                httpMethod = annotation.method().toUpperCase();
+            } else if (method.isAnnotationPresent(HandleUrl.class)) {
+                // Ancienne annotation (Sprint 1-6) - GET par défaut pour compatibilité
                 HandleUrl annotation = method.getAnnotation(HandleUrl.class);
-                String url = annotation.value();
+                url = annotation.value();
+                httpMethod = "GET";
+            }
+            
+            if (url != null && !url.isEmpty()) {
+                Mapping mapping = new Mapping(instance, method, httpMethod);
                 
                 // Vérifier si l'URL contient des paramètres dynamiques {param}
                 if (url.contains("{") && url.contains("}")) {
                     // URL avec paramètres dynamiques
-                    urlPatterns.add(new UrlPattern(url, new Mapping(instance, method)));
+                    urlPatterns.add(new UrlPattern(url, mapping, httpMethod));
                 } else {
-                    // URL statique simple
-                    urlMappings.put(url, new Mapping(instance, method));
+                    // URL statique simple - utiliser une clé composite pour gérer GET/POST
+                    String key = httpMethod + ":" + url;
+                    urlMappings.put(key, mapping);
+                    // Pour compatibilité avec l'ancien code, aussi stocker sans méthode HTTP
+                    // (mais seulement si c'est GET pour éviter les conflits)
+                    if ("GET".equals(httpMethod)) {
+                        urlMappings.put(url, mapping);
+                    }
                 }
             }
         }
@@ -92,15 +131,30 @@ public class FrontServlet extends HttpServlet {
             throws ServletException, IOException {
 
         String path = req.getRequestURI().substring(req.getContextPath().length());
+        String requestMethod = req.getMethod().toUpperCase(); // GET, POST, etc.
 
-        // Vérifier si l'URL correspond à un mapping statique
+        // Vérifier si l'URL correspond à un mapping statique avec la méthode HTTP
+        // D'abord essayer avec la clé composite (méthode:url)
+        String compositeKey = requestMethod + ":" + path;
+        if (urlMappings.containsKey(compositeKey)) {
+            Mapping mapping = urlMappings.get(compositeKey);
+            if (matchesHttpMethod(mapping, requestMethod)) {
+                handleAnnotatedMethod(mapping, req, res);
+                return;
+            }
+        }
+        
+        // Ensuite essayer sans méthode HTTP (pour compatibilité avec ancien code)
         if (urlMappings.containsKey(path)) {
-            handleAnnotatedMethod(urlMappings.get(path), req, res);
-            return;
+            Mapping mapping = urlMappings.get(path);
+            if (matchesHttpMethod(mapping, requestMethod)) {
+                handleAnnotatedMethod(mapping, req, res);
+                return;
+            }
         }
 
         // Vérifier si l'URL correspond à un pattern avec paramètres dynamiques
-        UrlPattern matchedPattern = findMatchingPattern(path);
+        UrlPattern matchedPattern = findMatchingPattern(path, requestMethod);
         if (matchedPattern != null) {
             handleAnnotatedMethodWithParams(matchedPattern, path, req, res);
             return;
@@ -123,6 +177,14 @@ public class FrontServlet extends HttpServlet {
         } else {
             customServe(req, res);
         }
+    }
+
+    /**
+     * Vérifie si la méthode HTTP de la requête correspond à celle du mapping
+     */
+    private boolean matchesHttpMethod(Mapping mapping, String requestMethod) {
+        String mappingMethod = mapping.getHttpMethod();
+        return mappingMethod != null && mappingMethod.equalsIgnoreCase(requestMethod);
     }
 
     private void handleAnnotatedMethod(Mapping mapping, HttpServletRequest req, HttpServletResponse res)
@@ -178,15 +240,23 @@ public class FrontServlet extends HttpServlet {
     }
 
     /**
-     * Trouve un pattern d'URL qui correspond au chemin demandé
+     * Trouve un pattern d'URL qui correspond au chemin demandé et à la méthode HTTP
      */
-    private UrlPattern findMatchingPattern(String requestPath) {
+    private UrlPattern findMatchingPattern(String requestPath, String requestMethod) {
         for (UrlPattern pattern : urlPatterns) {
-            if (matchesPattern(pattern.getPattern(), requestPath)) {
+            if (matchesPattern(pattern.getPattern(), requestPath) && 
+                matchesHttpMethod(pattern.getHttpMethod(), requestMethod)) {
                 return pattern;
             }
         }
         return null;
+    }
+
+    /**
+     * Vérifie si la méthode HTTP correspond
+     */
+    private boolean matchesHttpMethod(String patternMethod, String requestMethod) {
+        return patternMethod != null && patternMethod.equalsIgnoreCase(requestMethod);
     }
 
     /**
@@ -367,15 +437,23 @@ public class FrontServlet extends HttpServlet {
     }
 
     /**
-     * Classe interne pour stocker un pattern d'URL avec son mapping
+     * Classe interne pour stocker un pattern d'URL avec son mapping et sa méthode HTTP
      */
     private static class UrlPattern {
         private String pattern;
         private Mapping mapping;
+        private String httpMethod;
 
         public UrlPattern(String pattern, Mapping mapping) {
             this.pattern = pattern;
             this.mapping = mapping;
+            this.httpMethod = mapping.getHttpMethod();
+        }
+
+        public UrlPattern(String pattern, Mapping mapping, String httpMethod) {
+            this.pattern = pattern;
+            this.mapping = mapping;
+            this.httpMethod = httpMethod != null ? httpMethod.toUpperCase() : "GET";
         }
 
         public String getPattern() {
@@ -384,6 +462,10 @@ public class FrontServlet extends HttpServlet {
 
         public Mapping getMapping() {
             return mapping;
+        }
+
+        public String getHttpMethod() {
+            return httpMethod;
         }
     }
 }

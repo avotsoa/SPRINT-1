@@ -3,7 +3,7 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Détails de l'Étudiant - Sprint 6</title>
+  <title>Details de l'Etudiant - Sprint 6</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -56,7 +56,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>Détails de l'Étudiant</h1>
+    <h1>Details de l'Etudiant</h1>
     
     <div class="info">
       <p><span class="label">ID:</span> <span class="value"><%= request.getAttribute("id") %></span></p>
@@ -67,14 +67,14 @@
     <p class="message"><%= request.getAttribute("message") %></p>
     
     <p>
-      <a href="/FrameworkResume/etudiants">Liste des étudiants</a>
+      <a href="/FrameworkResume/etudiants">Liste des etudiants</a>
       <a href="/FrameworkResume/home">Accueil</a>
     </p>
     
     <hr style="margin-top: 30px; border: none; border-top: 1px solid #ddd;">
     <p style="color: #888; font-size: 0.9em; margin-top: 20px;">
-      <strong>Sprint 6:</strong> Cette page démontre la gestion des paramètres d'URL dynamiques.<br>
-      L'URL <code>/etudiant/{id}</code> a été mappée à la méthode <code>get(int id)</code>.
+      <strong>Sprint 6:</strong> Cette page demontre la gestion des parametres d'URL dynamiques.<br>
+      L'URL <code>/etudiant/{id}</code> a ete mappee a la methode <code>get(int id)</code>.
     </p>
   </div>
 </body>
