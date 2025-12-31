@@ -8,6 +8,11 @@ import java.lang.reflect.*;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import com.annotations.HandleUrl;
+<<<<<<< Updated upstream
+=======
+import com.annotations.Controller;
+import com.framework.ModelView;
+>>>>>>> Stashed changes
 
 public class FrontServlet extends HttpServlet {
     private RequestDispatcher defaultDispatcher;
@@ -114,6 +119,7 @@ public class FrontServlet extends HttpServlet {
             
             // Invoquer la méthode
             Object result = method.invoke(controller);
+<<<<<<< Updated upstream
             
             // Gérer le résultat
             res.setContentType("text/html;charset=UTF-8");
@@ -121,6 +127,28 @@ public class FrontServlet extends HttpServlet {
                 if (result != null) {
                     out.println(result.toString());
                 } else {
+=======
+
+            res.setCharacterEncoding("UTF-8");
+            if (result instanceof String) {
+                // Retour String: écrire directement la chaîne
+                res.setContentType("text/html;charset=UTF-8");
+                try (PrintWriter out = res.getWriter()) {
+                    out.print((String) result);
+                }
+            } else if (result instanceof ModelView) {
+                // Retour ModelView: forward vers la vue
+                ModelView mv = (ModelView) result;
+                String view = mv.getView();
+                if (view == null || view.isEmpty()) {
+                    throw new ServletException("ModelView sans nom de vue");
+                }
+                req.getRequestDispatcher(view).forward(req, res);
+            } else {
+                // Aucun retour ou type non géré: message par défaut
+                res.setContentType("text/html;charset=UTF-8");
+                try (PrintWriter out = res.getWriter()) {
+>>>>>>> Stashed changes
                     out.println("<html><body><h1>Méthode exécutée avec succès</h1></body></html>");
                 }
             }
