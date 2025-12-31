@@ -341,6 +341,13 @@ public class FrontServlet extends HttpServlet {
                 continue;
             }
             
+            // Sprint 8-bis: Vérifier si le paramètre est un objet (pas primitif, pas String, pas Map)
+            if (isObjectType(paramType)) {
+                // Instancier et remplir l'objet avec les paramètres de la requête
+                args[i] = instantiateAndFillObject(paramType, paramName, allRequestParams);
+                continue;
+            }
+            
             // Vérifier si le nom du paramètre est disponible (compilé avec -parameters)
             // Si non disponible, param.getName() retourne "arg0", "arg1", etc.
             // Dans ce cas, on ne peut pas faire de matching par nom, donc on utilise null
@@ -387,6 +394,248 @@ public class FrontServlet extends HttpServlet {
         }
         
         return false;
+    }
+
+    /**
+     * Sprint 8-bis: Vérifie si un paramètre est un type objet (pas primitif, pas String, pas Map)
+     */
+    private boolean isObjectType(Class<?> paramType) {
+        // Exclure les types primitifs
+        if (paramType.isPrimitive()) {
+            return false;
+        }
+        
+        // Exclure String
+        if (paramType == String.class) {
+            return false;
+        }
+        
+        // Exclure Map (déjà géré par Sprint 8)
+        if (Map.class.isAssignableFrom(paramType)) {
+            return false;
+        }
+        
+        // Exclure les types de base Java
+        if (paramType == Integer.class || paramType == Long.class || 
+            paramType == Double.class || paramType == Float.class ||
+            paramType == Boolean.class || paramType == Byte.class ||
+            paramType == Short.class || paramType == Character.class) {
+            return false;
+        }
+        
+        // C'est un objet personnalisé
+        return true;
+    }
+
+    /**
+     * Sprint 8-bis: Instancie et remplit un objet avec les paramètres de la requête
+     * Utilise la convention: paramName.property (ex: e.name, e.departement[0].name)
+     */
+    private Object instantiateAndFillObject(Class<?> objectType, String paramName, Map<String, String> allParams) {
+        try {
+            // Créer une instance de l'objet
+            Object instance = objectType.getDeclaredConstructor().newInstance();
+            
+            // Si le nom du paramètre n'est pas disponible, retourner l'instance vide
+            if (paramName == null || paramName.startsWith("arg")) {
+                return instance;
+            }
+            
+            // Préfixe pour chercher les paramètres (ex: "e." pour paramètre "e")
+            String prefix = paramName + ".";
+            
+            // Parcourir tous les paramètres qui commencent par le préfixe
+            for (Map.Entry<String, String> entry : allParams.entrySet()) {
+                String key = entry.getKey();
+                String value = entry.getValue();
+                
+                if (key.startsWith(prefix)) {
+                    // Enlever le préfixe pour obtenir le chemin de la propriété
+                    String propertyPath = key.substring(prefix.length());
+                    setPropertyValue(instance, propertyPath, value);
+                }
+            }
+            
+            return instance;
+        } catch (Exception e) {
+            // En cas d'erreur, retourner une instance vide
+            try {
+                return objectType.getDeclaredConstructor().newInstance();
+            } catch (Exception ex) {
+                return null;
+            }
+        }
+    }
+
+    /**
+     * Sprint 8-bis: Définit la valeur d'une propriété dans un objet
+     * Gère les chemins simples (name) et complexes (departement[0].name)
+     */
+    private void setPropertyValue(Object obj, String propertyPath, String value) {
+        try {
+            // Gérer les tableaux/listes: departement[0].name
+            if (propertyPath.contains("[") && propertyPath.contains("]")) {
+                int bracketIndex = propertyPath.indexOf('[');
+                String propertyName = propertyPath.substring(0, bracketIndex);
+                String rest = propertyPath.substring(bracketIndex);
+                
+                // Extraire l'index: [0]
+                int endBracket = rest.indexOf(']');
+                String indexStr = rest.substring(1, endBracket);
+                int index = Integer.parseInt(indexStr);
+                
+                // Récupérer la propriété (tableau ou liste)
+                Object arrayOrList = getPropertyValue(obj, propertyName);
+                
+                if (arrayOrList != null) {
+                    // Si c'est un tableau
+                    if (arrayOrList.getClass().isArray()) {
+                        Object[] array = (Object[]) arrayOrList;
+                        if (index < array.length) {
+                            if (array[index] == null) {
+                                // Créer une instance si nécessaire (pour les objets)
+                                Class<?> componentType = arrayOrList.getClass().getComponentType();
+                                if (!componentType.isPrimitive() && componentType != String.class) {
+                                    try {
+                                        array[index] = componentType.getDeclaredConstructor().newInstance();
+                                    } catch (Exception e) {
+                                        // Ignorer
+                                    }
+                                }
+                            }
+                            if (array[index] != null) {
+                                // Continuer avec le reste du chemin
+                                String remainingPath = rest.substring(endBracket + 1);
+                                if (remainingPath.startsWith(".")) {
+                                    remainingPath = remainingPath.substring(1);
+                                }
+                                if (!remainingPath.isEmpty()) {
+                                    setPropertyValue(array[index], remainingPath, value);
+                                } else {
+                                    // C'est la valeur finale
+                                    setSimpleProperty(array[index], "value", value);
+                                }
+                            }
+                        }
+                    }
+                    // Si c'est une List
+                    else if (java.util.List.class.isAssignableFrom(arrayOrList.getClass())) {
+                        @SuppressWarnings("unchecked")
+                        java.util.List<Object> list = (java.util.List<Object>) arrayOrList;
+                        
+                        // S'assurer que la liste a assez d'éléments
+                        while (list.size() <= index) {
+                            list.add(null);
+                        }
+                        
+                        if (list.get(index) == null) {
+                            // Déterminer le type d'élément de la liste
+                            Type genericType = null;
+                            try {
+                                Field field = obj.getClass().getDeclaredField(propertyName);
+                                field.setAccessible(true);
+                                Type fieldType = field.getGenericType();
+                                if (fieldType instanceof ParameterizedType) {
+                                    ParameterizedType pType = (ParameterizedType) fieldType;
+                                    Type[] actualTypes = pType.getActualTypeArguments();
+                                    if (actualTypes.length > 0 && actualTypes[0] instanceof Class) {
+                                        Class<?> elementType = (Class<?>) actualTypes[0];
+                                        try {
+                                            list.set(index, elementType.getDeclaredConstructor().newInstance());
+                                        } catch (Exception e) {
+                                            // Ignorer
+                                        }
+                                    }
+                                }
+                            } catch (Exception e) {
+                                // Ignorer
+                            }
+                        }
+                        
+                        if (list.get(index) != null) {
+                            String remainingPath = rest.substring(endBracket + 1);
+                            if (remainingPath.startsWith(".")) {
+                                remainingPath = remainingPath.substring(1);
+                            }
+                            if (!remainingPath.isEmpty()) {
+                                setPropertyValue(list.get(index), remainingPath, value);
+                            } else {
+                                setSimpleProperty(list.get(index), "value", value);
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Propriété simple: name
+                setSimpleProperty(obj, propertyPath, value);
+            }
+        } catch (Exception e) {
+            // Ignorer les erreurs de setter
+        }
+    }
+
+    /**
+     * Sprint 8-bis: Définit une propriété simple dans un objet
+     */
+    private void setSimpleProperty(Object obj, String propertyName, String value) {
+        try {
+            // Chercher un setter: setName(String)
+            String setterName = "set" + capitalize(propertyName);
+            Method[] methods = obj.getClass().getMethods();
+            
+            for (Method method : methods) {
+                if (method.getName().equals(setterName) && method.getParameterCount() == 1) {
+                    Class<?> paramType = method.getParameterTypes()[0];
+                    Object convertedValue = convertValue(value, paramType);
+                    method.invoke(obj, convertedValue);
+                    return;
+                }
+            }
+            
+            // Si pas de setter, essayer de définir directement un champ
+            try {
+                Field field = obj.getClass().getDeclaredField(propertyName);
+                field.setAccessible(true);
+                Class<?> fieldType = field.getType();
+                Object convertedValue = convertValue(value, fieldType);
+                field.set(obj, convertedValue);
+            } catch (NoSuchFieldException e) {
+                // Champ n'existe pas, ignorer
+            }
+        } catch (Exception e) {
+            // Ignorer les erreurs
+        }
+    }
+
+    /**
+     * Sprint 8-bis: Récupère la valeur d'une propriété
+     */
+    private Object getPropertyValue(Object obj, String propertyName) {
+        try {
+            // Chercher un getter: getName()
+            String getterName = "get" + capitalize(propertyName);
+            Method method = obj.getClass().getMethod(getterName);
+            return method.invoke(obj);
+        } catch (Exception e) {
+            try {
+                // Essayer directement le champ
+                Field field = obj.getClass().getDeclaredField(propertyName);
+                field.setAccessible(true);
+                return field.get(obj);
+            } catch (Exception ex) {
+                return null;
+            }
+        }
+    }
+
+    /**
+     * Capitalise la première lettre d'une chaîne
+     */
+    private String capitalize(String str) {
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+        return str.substring(0, 1).toUpperCase() + str.substring(1);
     }
 
     /**

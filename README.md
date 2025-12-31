@@ -22,3 +22,7 @@ url information 1-3:
 
  sprint 8 
  http://localhost:8080/FrameworkResume/formulaire-map
+
+ sprint8_bis
+ http://localhost:8080/FrameworkResume/emp/save (GET) - Affiche le formulaire
+http://localhost:8080/FrameworkResume/emp/save (POST) - Traite le formulaire avec objet Emp
