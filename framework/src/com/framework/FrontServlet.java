@@ -128,6 +128,11 @@ public class FrontServlet extends HttpServlet {
                 if (view == null || view.isEmpty()) {
                     throw new ServletException("ModelView sans nom de vue");
                 }
+                if (mv.getData() != null) {
+                    for (Map.Entry<String, Object> entry : mv.getData().entrySet()) {
+                        req.setAttribute(entry.getKey(), entry.getValue());
+                    }
+                }
                 req.getRequestDispatcher(view).forward(req, res);
             } else {
                 res.setContentType("text/html;charset=UTF-8");

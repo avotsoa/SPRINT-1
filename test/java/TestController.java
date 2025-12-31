@@ -35,7 +35,8 @@ public class TestController {
      */
     @HandleUrl("/mv")
     public ModelView mv() {
-        return new ModelView("/test.jsp");
+        return new ModelView("/test.jsp")
+                .addString("message", "Bonjour depuis ModelView.data (Sprint5)");
     }
 
 }

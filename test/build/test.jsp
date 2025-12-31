@@ -8,6 +8,7 @@
 <body>
   <h1>JSP de test (Sprint4-bis)</h1>
   <p>Cette page est rendue via ModelView et un forward du FrontServlet.</p>
+  <p>Message (Sprint5): <strong><%= request.getAttribute("message") %></strong></p>
   <p><a href="/FrameworkResume/home">Accueil</a></p>
 </body>
 </html>
