@@ -17,5 +17,8 @@ http://localhost:8080/FrameworkResume/api/data (GET via @RequestMapping)
 # Note: Le formulaire peut être soumis via POST pour voir la différence
 
 
-url information :
+url information 1-3:
  http://localhost:8080/FrameworkResume/annotation-info
+
+ sprint 8 
+ http://localhost:8080/FrameworkResume/formulaire-map

@@ -303,6 +303,7 @@ public class FrontServlet extends HttpServlet {
     /**
      * Prépare les arguments pour l'invocation de la méthode
      * Gère les méthodes sans paramètres (anciennes fonctionnalités) et avec paramètres (Sprint 6)
+     * Sprint 8: Gère les paramètres Map<String,String> qui reçoivent tous les paramètres de la requête
      */
     private Object[] prepareMethodArguments(Method method, Map<String, String> urlParams, HttpServletRequest req) {
         Parameter[] parameters = method.getParameters();
@@ -314,14 +315,17 @@ public class FrontServlet extends HttpServlet {
         
         Object[] args = new Object[parameters.length];
         
-        // Combiner les paramètres d'URL et de requête
-        Map<String, String> allParams = new HashMap<>(urlParams);
+        // Sprint 8: Créer une Map avec tous les paramètres de la requête
+        Map<String, String> allRequestParams = new HashMap<>();
         
-        // Ajouter les paramètres de requête
+        // Ajouter les paramètres d'URL
+        allRequestParams.putAll(urlParams);
+        
+        // Ajouter tous les paramètres de requête (request.getParameter)
         Enumeration<String> paramNames = req.getParameterNames();
         while (paramNames.hasMoreElements()) {
             String paramName = paramNames.nextElement();
-            allParams.put(paramName, req.getParameter(paramName));
+            allRequestParams.put(paramName, req.getParameter(paramName));
         }
         
         // Pour chaque paramètre de la méthode
@@ -329,6 +333,13 @@ public class FrontServlet extends HttpServlet {
             Parameter param = parameters[i];
             String paramName = param.getName();
             Class<?> paramType = param.getType();
+            
+            // Sprint 8: Vérifier si le paramètre est de type Map<String,String>
+            if (isMapStringString(paramType, param)) {
+                // Créer une nouvelle Map avec tous les paramètres de la requête
+                args[i] = new HashMap<>(allRequestParams);
+                continue;
+            }
             
             // Vérifier si le nom du paramètre est disponible (compilé avec -parameters)
             // Si non disponible, param.getName() retourne "arg0", "arg1", etc.
@@ -338,7 +349,7 @@ public class FrontServlet extends HttpServlet {
             String stringValue = null;
             if (isRealName) {
                 // Chercher la valeur dans les paramètres (URL ou requête) par nom
-                stringValue = allParams.get(paramName);
+                stringValue = allRequestParams.get(paramName);
             }
             // Si le nom n'est pas disponible ou la valeur n'est pas trouvée, stringValue reste null
             
@@ -347,6 +358,35 @@ public class FrontServlet extends HttpServlet {
         }
         
         return args;
+    }
+    
+    /**
+     * Sprint 8: Vérifie si un paramètre est de type Map<String,String>
+     */
+    private boolean isMapStringString(Class<?> paramType, Parameter param) {
+        // Vérifier si c'est une Map
+        if (!Map.class.isAssignableFrom(paramType)) {
+            return false;
+        }
+        
+        // Vérifier les types génériques via Type
+        try {
+            Type genericType = param.getParameterizedType();
+            if (genericType instanceof java.lang.reflect.ParameterizedType) {
+                java.lang.reflect.ParameterizedType pType = (java.lang.reflect.ParameterizedType) genericType;
+                Type[] actualTypes = pType.getActualTypeArguments();
+                
+                // Vérifier qu'il y a exactement 2 types génériques (K, V)
+                if (actualTypes.length == 2) {
+                    // Vérifier que les deux sont String
+                    return actualTypes[0] == String.class && actualTypes[1] == String.class;
+                }
+            }
+        } catch (Exception e) {
+            // En cas d'erreur, on considère que ce n'est pas Map<String,String>
+        }
+        
+        return false;
     }
 
     /**

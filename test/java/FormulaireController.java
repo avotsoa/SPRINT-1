@@ -5,6 +5,7 @@ import com.annotations.GetMapping;
 import com.annotations.PostMapping;
 import com.annotations.RequestMapping;
 import com.framework.ModelView;
+import java.util.Map;
 
 /**
  * Contrôleur pour tester les méthodes HTTP GET et POST (Sprint 7).
@@ -33,6 +34,32 @@ public class FormulaireController {
         ModelView mv = new ModelView("/formulaire-resultat.jsp");
         mv.addString("message", "Formulaire traite avec succes (POST)");
         mv.addString("titre", "Resultat du formulaire");
+        return mv;
+    }
+
+    /**
+     * Sprint 8: Traite le formulaire avec Map<String,String> qui contient tous les parametres.
+     * URL: /formulaire-map
+     */
+    @PostMapping("/formulaire-map")
+    public ModelView traiterFormulaireAvecMap(Map<String, String> params) {
+        ModelView mv = new ModelView("/formulaire-map-resultat.jsp");
+        mv.addString("message", "Formulaire traite avec Map<String,String> (Sprint 8)");
+        mv.addString("titre", "Resultat avec Map - Sprint 8");
+        mv.addObject("params", params);
+        mv.addObject("paramsCount", params != null ? params.size() : 0);
+        return mv;
+    }
+
+    /**
+     * Affiche le formulaire pour tester Map<String,String> (GET).
+     * URL: /formulaire-map
+     */
+    @GetMapping("/formulaire-map")
+    public ModelView afficherFormulaireMap() {
+        ModelView mv = new ModelView("/formulaire-map.jsp");
+        mv.addString("message", "Formulaire de test pour Map<String,String> (Sprint 8)");
+        mv.addString("titre", "Formulaire Map - Sprint 8");
         return mv;
     }
 
