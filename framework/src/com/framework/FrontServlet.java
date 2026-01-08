@@ -429,8 +429,13 @@ public class FrontServlet extends HttpServlet {
                         // Lire le contenu du fichier
                         try (java.io.InputStream inputStream = part.getInputStream()) {
                             byte[] fileBytes = inputStream.readAllBytes();
+                            // Convertir byte[] en Byte[]
+                            Byte[] fileBytesWrapper = new Byte[fileBytes.length];
+                            for (int j = 0; j < fileBytes.length; j++) {
+                                fileBytesWrapper[j] = fileBytes[j];
+                            }
                             // Utiliser le nom du champ (part.getName()) comme clé
-                            files.put(part.getName(), fileBytes);
+                            files.put(part.getName(), fileBytesWrapper);
                         }
                     }
                 }
