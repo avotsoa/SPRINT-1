@@ -49,6 +49,11 @@ public class TestController {
                         <p><a href="/FrameworkResume/emp/json">Formulaire Employe (JSON)</a></p>
                     </div>
                     
+                    <div class="sprint-section">
+                        <p class="sprint-title">Sprint 11: Gestion de Session</p>
+                        <p><a href="/FrameworkResume/emp/session">Gestion de Session HTTP</a></p>
+                    </div>
+                    
                     <h2>Navigation</h2>
                     <p>
                         <a href="/FrameworkResume/home">Accueil</a> | 

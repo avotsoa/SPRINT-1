@@ -339,6 +339,13 @@ public class FrontServlet extends HttpServlet {
             String paramName = param.getName();
             Class<?> paramType = param.getType();
             
+            // Sprint 11: Vérifier si le paramètre est de type HttpSession
+            if (paramType == HttpSession.class) {
+                // Passer la session de la requête
+                args[i] = req.getSession();
+                continue;
+            }
+            
             // Sprint 10: Vérifier si le paramètre est de type Map<String,Byte[]>
             if (isMapStringByteArray(paramType, param)) {
                 // Créer une nouvelle Map avec tous les fichiers uploadés
